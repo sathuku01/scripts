@@ -1,0 +1,179 @@
+#!/usr/bin/env bash
+
+set -e
+
+# =========================================================
+# Brave Browser Portable Installer
+# - Installs Brave into ~/Applications
+# - Downloads custom Cursor-style icon
+# - Creates desktop launcher
+# - Adds terminal alias
+# =========================================================
+
+BRAVE_VERSION="4.0"
+
+INSTALL_DIR="$HOME/Applications"
+APP_DIR="$INSTALL_DIR/opt/brave.com/brave"
+
+DESKTOP_DIR="$HOME/.local/share/applications"
+ICON_DIR="$HOME/.local/share/icons/custom"
+
+DESKTOP_FILE="$DESKTOP_DIR/cursor-browser.desktop"
+CUSTOM_ICON="$ICON_DIR/cursor-brave.png"
+
+DEB_FILE="brave-browser_${BRAVE_VERSION}_amd64.deb"
+DOWNLOAD_URL="https://brave-browser-apt-release.s3.brave.com/pool/main/b/brave-browser/${DEB_FILE}"
+
+echo "========================================="
+echo " Installing Brave Browser"
+echo "========================================="
+echo
+
+# ---------------------------------------------------------
+# Create required directories
+# ---------------------------------------------------------
+
+echo "==> Creating directories..."
+
+mkdir -p "$INSTALL_DIR"
+mkdir -p "$DESKTOP_DIR"
+mkdir -p "$ICON_DIR"
+
+cd "$INSTALL_DIR"
+
+# ---------------------------------------------------------
+# Clean previous installer files
+# ---------------------------------------------------------
+
+echo "==> Cleaning old installer files..."
+
+rm -f brave-browser_*.deb
+rm -f control.tar.*
+rm -f data.tar.*
+rm -f debian-binary
+
+# ---------------------------------------------------------
+# Download Brave
+# ---------------------------------------------------------
+
+echo "==> Downloading Brave Browser ${BRAVE_VERSION}..."
+
+curl -LO "$DOWNLOAD_URL"
+
+# ---------------------------------------------------------
+# Extract package
+# ---------------------------------------------------------
+
+echo "==> Extracting package..."
+
+ar x "$DEB_FILE"
+
+if [ -f data.tar.xz ]; then
+    tar -xf data.tar.xz
+elif [ -f data.tar.zst ]; then
+    tar --use-compress-program=unzstd -xf data.tar.zst
+elif [ -f data.tar.gz ]; then
+    tar -xf data.tar.gz
+else
+    echo "ERROR: Could not find Brave data archive."
+    exit 1
+fi
+
+# ---------------------------------------------------------
+# Cleanup installer files
+# ---------------------------------------------------------
+
+echo "==> Cleaning temporary files..."
+
+rm -f "$DEB_FILE"
+rm -f control.tar.*
+rm -f data.tar.*
+rm -f debian-binary
+
+# ---------------------------------------------------------
+# Download custom icon
+# ---------------------------------------------------------
+
+echo "==> Downloading custom Cursor-style icon..."
+
+curl -L \
+"https://dl.svgcdn.com/png/bxl/cursor-ai-800.png" \
+-o "$CUSTOM_ICON"
+
+# ---------------------------------------------------------
+# Create desktop launcher
+# ---------------------------------------------------------
+
+echo "==> Creating desktop launcher..."
+
+cat > "$DESKTOP_FILE" <<EOF
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Cursor Browser
+Comment=Web Browser
+Exec=$APP_DIR/brave-browser --no-sandbox %U
+Icon=$CUSTOM_ICON
+Terminal=false
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;x-scheme-handler/http;x-scheme-handler/https;
+StartupNotify=true
+EOF
+
+chmod +x "$DESKTOP_FILE"
+
+# ---------------------------------------------------------
+# Add shell alias
+# ---------------------------------------------------------
+
+echo "==> Adding terminal alias..."
+
+ALIAS_CMD="alias brave='$APP_DIR/brave-browser --no-sandbox &'"
+
+if ! grep -q "alias brave=" "$HOME/.bashrc" 2>/dev/null; then
+    echo "$ALIAS_CMD" >> "$HOME/.bashrc"
+fi
+
+if [ -f "$HOME/.zshrc" ]; then
+    if ! grep -q "alias brave=" "$HOME/.zshrc"; then
+        echo "$ALIAS_CMD" >> "$HOME/.zshrc"
+    fi
+fi
+
+# ---------------------------------------------------------
+# Refresh desktop databases
+# ---------------------------------------------------------
+
+echo "==> Refreshing desktop cache..."
+
+update-desktop-database "$DESKTOP_DIR" 2>/dev/null || true
+gtk-update-icon-cache "$HOME/.local/share/icons" 2>/dev/null || true
+
+# ---------------------------------------------------------
+# Done
+# ---------------------------------------------------------
+
+echo
+echo "========================================="
+echo " Installation Complete!"
+echo "========================================="
+echo
+echo "App Name:"
+echo "  Cursor Browser"
+echo
+echo "Launch from terminal:"
+echo "  brave"
+echo
+echo "Executable:"
+echo "  $APP_DIR/brave-browser"
+echo
+echo "Desktop launcher:"
+echo "  $DESKTOP_FILE"
+echo
+echo "Custom icon:"
+echo "  $CUSTOM_ICON"
+echo
+echo "If icon does not appear immediately:"
+echo "  - Log out and back in"
+echo "  - Or reboot"
+echo
