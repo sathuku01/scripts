@@ -345,14 +345,14 @@ fi
 
 # Try different binary names
 if [ -f "$INSTALL_DIR/brave" ]; then
-    exec "$INSTALL_DIR/brave" "$@"
+    exec "$INSTALL_DIR/brave" --no-sandbox "$@"
 elif [ -f "$INSTALL_DIR/brave-browser" ]; then
-    exec "$INSTALL_DIR/brave-browser" "$@"
+    exec "$INSTALL_DIR/brave-browser" --no-sandbox "$@"
 else
     # Try to find brave binary recursively
     BRAVE_BIN=$(find "$INSTALL_DIR" -name "brave" -type f -executable 2>/dev/null | head -1)
     if [ -n "$BRAVE_BIN" ]; then
-        exec "$BRAVE_BIN" "$@"
+        exec "$BRAVE_BIN" --no-sandbox "$@"
     else
         echo "Error: Brave executable not found in $INSTALL_DIR"
         echo "Please reinstall Brave using the installation script."
